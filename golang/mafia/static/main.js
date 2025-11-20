@@ -90,7 +90,7 @@ function stopPhaseTimer() {
 
 function updateTimerControlsVisibility() {
   if (!timerControlsEl) return;
-  const shouldShow = currentPhase === 'day' && myNickname === currentHost;
+  const shouldShow = currentPhase === 'day';
   timerControlsEl.classList.toggle('active', shouldShow);
 }
 
@@ -259,7 +259,7 @@ controlButtons.forEach(btn => {
           alert('낮 시간에만 시간을 조절할 수 있습니다.');
           return;
         }
-        send('admin', { action: btn.dataset.action });
+        send('timer', { action: btn.dataset.action });
         break;
       default:
         break;

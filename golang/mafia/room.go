@@ -211,6 +211,8 @@ func (r *Room) handleMessage(c *Client, msg ClientMessage) {
 		r.handleDecision(c, msg.Text)
 	case "admin":
 		r.handleAdmin(c, msg)
+	case "timer":
+		r.handleTimerRequest(c, strings.ToLower(strings.TrimSpace(msg.Action)))
 	default:
 		c.pushSystem("알 수 없는 명령입니다.")
 	}
@@ -661,6 +663,46 @@ func (r *Room) handleAdmin(c *Client, msg ClientMessage) {
 	default:
 		c.pushSystem("지원하지 않는 관리자 명령입니다.")
 	}
+}
+
+func (r *Room) handleTimerRequest(c *Client, action string) {
+	if action == "" {
+		c.pushSystem("시간 조절 동작이 지정되지 않았습니다.")
+		return
+	}
+	if !r.state.Active {
+		c.pushSystem("게임이 진행 중일 때만 시간을 조절할 수 있습니다.")
+		return
+	}
+	if r.state.Phase != PhaseDay {
+		c.pushSystem("낮 시간에만 시간을 조절할 수 있습니다.")
+		return
+	}
+	if !r.state.Alive[c.name] {
+		c.pushSystem("사망자는 시간을 조절할 수 없습니다.")
+		return
+	}
+	var delta time.Duration
+	switch action {
+	case "shorten-day":
+		delta = -10 * time.Second
+	case "extend-day":
+		delta = 10 * time.Second
+	default:
+		c.pushSystem("지원하지 않는 시간 조절 요청입니다.")
+		return
+	}
+	remaining, err := r.adjustDayTimer(delta)
+	if err != nil {
+		c.pushSystem(err.Error())
+		return
+	}
+	verb := "줄였습니다"
+	if delta > 0 {
+		verb = "늘렸습니다"
+	}
+	msg := fmt.Sprintf("%s 님이 낮 시간을 %s. 남은 시간 %.0f초", c.name, verb, remaining.Seconds())
+	r.broadcast(ServerEvent{Type: EventTypeLog, Room: r.name, Body: msg})
 }
 
 func (r *Room) adjustDayTimer(delta time.Duration) (time.Duration, error) {
